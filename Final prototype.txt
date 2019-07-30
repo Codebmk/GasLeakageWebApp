@@ -1,0 +1,150 @@
+
+
+#include <SoftwareSerial.h>
+
+
+// We Created software serial object to communicate with SIM800L
+SoftwareSerial mySerial(3, 2); //SIM800L Tx & Rx is connected to Arduino #3 & #2
+
+int analogSensor;
+int blueLed = 13;
+int buzzer = 10;
+int smokeA0 = A0;
+// our threshold value
+int sensorThres = 300;
+
+void setup() {
+  pinMode(blueLed, OUTPUT);
+  pinMode(buzzer, OUTPUT);
+  pinMode(smokeA0, INPUT);
+  Serial.begin(9600);
+  mySerial.begin(9600);
+   Serial.println(" | GAS AND SMOKE DETECTOR!");
+
+
+   
+}
+
+void loop() {
+  analogSensor = analogRead(smokeA0);
+
+  Serial.print("Sensor Value: ");
+  Serial.print(analogSensor);
+  // Checks if it has reached greater than threshold value
+  if (analogSensor > sensorThres)
+  {
+    digitalWrite(blueLed, HIGH);
+    
+     Serial.println(" | Smoke detected!");
+    tone(buzzer, 1000, 500);
+    
+Serial.println("Initializing..."); 
+  
+      tosend();
+      field1(analogSensor);
+      Endconnection();
+  mySerial.println("ATD+ +256 0703729340;"); //  change ZZ with country code and xxxxxxxxxxx with phone number to dial
+  updateSerial();
+  delay(20000); // wait for 20 seconds...
+  mySerial.println("ATH"); //hang up
+  updateSerial();
+  
+    delay(8000);
+     }
+  else
+  { Serial.println();
+    digitalWrite(blueLed, LOW);
+    noTone(buzzer);
+  }
+  delay(1000);
+}
+void tosend(){
+  
+mySerial.println("AT"); //Once the handshake test is successful, i t will back to OK
+delay(200);
+
+mySerial.println("AT+CSQ"); //Signal quality test, value range is 0-31 , 31 is the best
+  delay(200);
+  
+  mySerial.println("AT+CCID"); //Read SIM information to confirm whether the SIM is plugged
+  delay(200);
+  
+mySerial.println("AT+CPIN?");
+delay(200);
+
+mySerial.println("AT+CBC");
+delay(200);
+
+
+mySerial.println("AT+CREG?");
+delay(200);
+
+
+mySerial.println("AT+CGATT?");
+delay(200);
+
+mySerial.println("AT+CIPSHUT");
+delay(200);
+
+mySerial.println("AT+CIPSTATUS");
+delay(1000);
+
+mySerial.println("AT+CIPMUX=0 ");
+delay(1000);
+updateSerial();
+
+mySerial.println("AT+CSTT=\"MTN-UGANDA\",\"MTN-INTERNET\",""");
+delay(200);
+updateSerial();
+
+mySerial.println("AT+CIICR");//start wireless connection cellular network
+delay(2000);
+updateSerial();
+
+mySerial.println("AT+CIFSR");//enquire regarding the IP address allocated
+delay(2000);
+updateSerial();
+
+mySerial.println("AT+CIPSTART=\"TCP\",\"184.106.153.149\",\"80\"");//connect to the ThingSpeak update URL (https://api.thingspeak.com)
+updateSerial();
+
+/*Serial.println("WRITE CIPSTART: ");
+String command = Serial.readString();
+while(Serial.available())
+{
+  
+}
+updateSerial();*/
+
+mySerial.println();
+mySerial.println("AT+CIPSEND=44");//declare the number of bytes (characters) I want to send
+updateSerial();
+
+  }
+  void field1(int analogSensor){
+    String str = "GET update?api_key=K4VC7OLCPPRV89GW&field1=" + String (analogSensor);
+    mySerial.println(str);//this is a constant beginning for the GET command and is as provided by ThingSpeak
+    delay(4000);
+updateSerial();
+mySerial.println((char)26);
+delay(4000);
+updateSerial();
+mySerial.println();
+    }
+    void Endconnection() {
+mySerial.println("AT+CIPSHUT");
+delay(200); 
+updateSerial();     
+      }
+void updateSerial()
+{
+  delay(2500);
+  while (Serial.available()) 
+  {
+    mySerial.write(Serial.read());//Forward what Serial received to Software Serial Port
+  }
+  while(mySerial.available()) 
+  {
+    Serial.write(mySerial.read());//Forward what Software Serial received to Serial Port
+  }
+}
